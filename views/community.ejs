@@ -1,0 +1,411 @@
+<!--community.ejs -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Community</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/navbar.css">
+    <link rel="stylesheet" href="../assets/css/page-layout.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:ital@1&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/bootstrap.min.css">
+    <script src="../assets/css/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="../assets/lib/fusioncharts/js/fusioncharts.js"></script>
+    <script src="../assets/lib/fusioncharts/js/themes/fusioncharts.theme.fusion.js"></script>
+</head>
+<style>
+    .img-profile {
+        border-radius: 50%;
+        width: 35px;
+        margin-top: 4rem;
+    }
+</style>
+
+<body>
+    <div class="flex-row">
+        <div class="nav">
+            <div class="sidebar">
+                <img src="../assets/images/สัญลักษณ์ประจำมหาวิทยาลัยแม่ฟ้าหลวง.png" width="50,70">
+                <p class="text-center" style="color: #A60303">MFU</p>
+                <hr>
+                <li class="mt-5"> <a href="/dashboard"><i class="bi bi-bar-chart"></i></a> </li>
+                <li class="mt-4"><a href="/listcourse"><i class="bi bi-map"></i></a></li>
+                <li class="mt-4"><a href="/search"><i class="bi bi-search"></i></a></li>
+                <li class="mt-4"><a href="/community"><i class="bi bi-chat"></i></a></li>
+                <li class="mt-4"><a href="/bookmark"><i class="bi bi-star"></i></a></li>
+                <li class="mt-4"><a href="/notification"><i class="bi bi-bell"></i></a></li>
+                <li class="mt-4"><a href="/history"><i class="bi bi-clock-history"></i></li>
+                <a class="btn" onclick="logout()">
+                    <div id="user-profile"></div>
+                </a>
+
+            </div>
+        </div>
+
+        <div class="container">
+            <button class="btn btn" onclick="post()"> <i class="bi bi-plus-lg"></i>Post</button>
+            <!-- <div id="postList" class="mt-5"></div>
+
+
+
+
+            <div class="container-fluid">
+                <% posts.forEach(function(post) { %>
+                    <div class="container-fluid card mt-5">
+                        <a href="/comment/<%= post.id %>">
+                            <p class="mt-4" style="color: #A60303; font-size: 25px;">
+                                <%= post.postdetail %>
+                            </p>
+                        </a>
+                        <div class="detail text-end">
+                            <span>
+                                <%= post.comments && Array.isArray(post.comments) ? post.comments.length : 0 %> 
+                            </span>
+                            <i class="bi bi-chat comment"></i>
+                        </div>
+                    </div>
+                    
+                <% }); %>
+            </div> -->
+
+
+            <!-- <div id="postList" style="background-color: aqua;" >
+                <% posts.forEach(function(post, index) { %>
+                    <div class="container-fluid card mt-3">
+                        <h4 class="mt-4">
+                            <%= post %>
+                        </h4>
+                        <div class="detail text-end">
+                            <span>
+                                <%= post.comments && Array.isArray(post.comments) ? post.comments.length : 0 %> 
+                            </span>
+                            <i class="bi bi-chat comment"></i>
+                        </div>
+                    </div>
+                    <% }); %>
+            </div> -->
+
+
+            <div id="postList" style="background-color: aqua;">
+                <% posts.forEach(function(post) { %>
+                    <div class="container-fluid card mt-3">
+                        <!-- เปลี่ยนที่นี่ให้ลิงก์ไปยังหน้า comment โดยส่ง post.id -->
+                        <a href="/comment/<%= post.postid %>" style="text-decoration:none;color:#000;">
+                            <h4 class="mt-4"><%= post.postdetail %></h4>
+                          </a>
+                        <p class="text-muted">
+                            Posted on <%= new Date(post.time).toLocaleString() %>
+                        </p>
+                        <div class="detail text-end">
+                            <span>Comments: <%= post.comments && Array.isArray(post.comments) ? post.comments.length : 0 %></span>
+                            <i class="bi bi-chat comment"></i>
+                        </div>
+                    </div>
+                <% }); %>
+            </div>
+
+
+        </div>
+    </div>
+
+    <!-- <script>
+    function topicone (){
+        window.location.href="/comment"
+    }
+    function post(){
+        window.location.href="/post"
+    }
+</script> -->
+
+
+    <script src="../assets/css/load-html.js"></script>
+    <script>
+
+
+        // $(document).ready(() => {
+        //     const userinfo = JSON.parse(sessionStorage.getItem('userinfo'));
+
+        //     // ดึงข้อมูลโพสต์เมื่อโหลดหน้า
+        //     fetchPosts();
+
+        //     // ฟังก์ชันสำหรับดึงข้อมูลโพสต์
+        //     function fetchPosts() {
+        //         $.ajax({
+        //             type: 'GET',
+        //             url: '/get-posts', // Endpoint ที่ใช้ดึงข้อมูลโพสต์
+        //             success: function (posts) {
+        //                 displayPosts(posts); // แสดงโพสต์ในหน้า
+        //             },
+        //             error: function (error) {
+        //                 console.error('Error fetching posts:', error);
+        //                 // alert('Failed to load posts. Please try again.');
+        //             }
+        //         });
+        //     }
+
+        //     // ฟังก์ชันสำหรับแสดงโพสต์ในหน้า
+        //     function displayPosts(posts) {
+        //     const postList = $('#postList');
+        //     postList.empty(); // ล้างโพสต์เดิม
+
+        //     if (posts && posts.length > 0) {
+        //         posts.forEach(post => {
+        //             const postElement = `
+        //                 <div class="container-fluid card mt-3">
+        //                     <h4 class="mt-4">${post.postdetail}</h4>
+        //                     <p class="text-muted">Posted on ${new Date(post.time).toLocaleString()}</p>
+        //                     <div class="detail text-end">
+        //                         <span>Comments: ${post.comments ? post.comments.length : 0}</span>
+        //                         <i class="bi bi-chat comment"></i>
+        //                     </div>
+        //                 </div>
+        //             `;
+        //             postList.append(postElement); // เพิ่มโพสต์ใหม่ใน DOM
+        //         });
+        //     } else {
+        //         postList.html('<p class="text-center text-muted">No posts available.</p>');
+        //     }
+        // }
+        $(document).ready(() => {
+            fetchPosts();
+
+            function fetchPosts() {
+                $.ajax({
+                    type: 'GET',
+                    url: '/get-posts',
+                    success: function (posts) {
+                        displayPosts(posts);
+                    },
+                    error: function (error) {
+                        console.error('Error fetching posts:', error);
+                    }
+                });
+            }
+            // function displayPosts(posts) {
+            //     const postList = $('#postList');
+            //     postList.empty();
+
+            //     if (posts && posts.length > 0) {
+            //         posts.forEach(post => {
+            //             const postElement = `
+            //     <div class="container-fluid card mt-3">
+            //         <h4 class="mt-4">
+            //             <a href="/post/${post.id}" style="text-decoration:none;color:#000;">${post.postdetail}</a>
+            //         </h4>
+            //         <p class="text-muted">Posted on ${new Date(post.time).toLocaleString()}</p>
+            //     </div>
+            // `;
+            //             postList.append(postElement);
+            //         });
+            //     } else {
+            //         postList.html('<p class="text-center text-muted">No posts available.</p>');
+            //     }
+            // }
+            function displayPosts(posts) {
+                const postList = $('#postList');
+                postList.empty();
+
+                if (posts && posts.length > 0) {
+                    posts.forEach(post => {
+                        const postElement = `
+                <div class="container-fluid card mt-3">
+                    <h4 class="mt-4">
+                        <a href="/comment/${post.id}" style="text-decoration:none;color:#000;">${post.postdetail}</a>
+                    </h4>
+                    <p class="text-muted">Posted on ${new Date(post.time).toLocaleString()}</p>
+                    <div class="detail text-end">
+                        <span>Comments: ${post.comments?.length || 0}</span>
+                        <i class="bi bi-chat comment"></i>
+                    </div>
+                </div>
+            `;
+                        postList.append(postElement);
+                    });
+                } else {
+                    postList.html('<p class="text-center text-muted">No posts available.</p>');
+                }
+            }
+
+
+
+            // ส่งโพสต์ใหม่
+            $('#postForm').on('submit', function (event) {
+                event.preventDefault();
+
+                const postContent = $('#postContentInput').val();
+
+                if (!postContent) {
+                    alert('Please fill in the post content.');
+                    return;
+                }
+
+                $.ajax({
+                    type: 'POST',
+                    url: '/post',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        postContent: postContent,
+                        email: userinfo.email
+                    }),
+                    success: function () {
+                        alert('Post submitted successfully!');
+                        fetchPosts(); // ดึงโพสต์ใหม่หลังจากโพสต์สำเร็จ
+                        $('#postContentInput').val(''); // ล้างข้อความในฟอร์ม
+                    },
+                    error: function (error) {
+                        console.error('Error:', error);
+                        alert('Failed to submit post. Please try again.');
+                    }
+                });
+            });
+        });
+        function post() {
+            window.location.href = "/post"
+        }
+        function topicone() {
+            window.location.href = "/comment"
+        }
+       
+
+        //         $(document).ready(() => {
+        //     const userinfo = JSON.parse(sessionStorage.getItem('userinfo'));
+
+        //     // ดึงข้อมูลโพสต์เมื่อโหลดหน้า
+        //     fetchPosts();
+
+        //     // ฟังก์ชันสำหรับดึงข้อมูลโพสต์
+        //     function fetchPosts() {
+        //         $.ajax({
+        //             type: 'GET',
+        //             url: '/get-posts', // Endpoint ที่ใช้ดึงข้อมูลโพสต์
+        //             success: function (posts) {
+        //                 displayPosts(posts); // แสดงโพสต์ในหน้า
+        //             },
+        //             error: function (error) {
+        //                 console.error('Error fetching posts:', error);
+        //                 alert('Failed to load posts. Please try again.');
+        //             }
+        //         });
+        //     }
+
+        //     // ฟังก์ชันสำหรับแสดงโพสต์ในหน้า
+        //     function displayPosts(posts) {
+        //         const postList = $('#postList');
+        //         postList.empty(); // ล้างโพสต์เดิม
+
+        //         if (posts && posts.length > 0) {
+        //             posts.forEach(post => {
+        //                 const postElement = `
+        //                     <div class="container-fluid card mt-3">
+        //                         <h4 class="mt-4">${post.postdetail}</h4>
+        //                         <p class="text-muted">Posted on ${new Date(post.time).toLocaleString()}</p>
+        //                         <div class="detail text-end">
+        //                             <span>Comments: ${post.comments ? post.comments.length : 0}</span>
+        //                             <i class="bi bi-chat comment"></i>
+        //                         </div>
+        //                     </div>
+        //                 `;
+        //                 postList.append(postElement); // เพิ่มโพสต์ใหม่ใน DOM
+        //             });
+        //         } else {
+        //             postList.html('<p class="text-center text-muted">No posts available.</p>');
+        //         }
+        //     }
+
+        //     // ส่งโพสต์ใหม่
+        //     $('#postForm').on('submit', function (event) {
+        //         event.preventDefault();
+
+        //         const postContent = $('#postContentInput').val();
+
+        //         if (!postContent) {
+        //             alert('Please fill in the post content.');
+        //             return;
+        //         }
+
+        //         $.ajax({
+        //             type: 'POST',
+        //             url: '/post',
+        //             contentType: 'application/json',
+        //             data: JSON.stringify({
+        //                 postContent: postContent,
+        //                 email: userinfo.email
+        //             }),
+        //             success: function () {
+        //                 alert('Post submitted successfully!');
+        //                 fetchPosts(); // ดึงโพสต์ใหม่หลังจากโพสต์สำเร็จ
+        //                 $('#postContentInput').val(''); // ล้างข้อความในฟอร์ม
+        //             },
+        //             error: function (error) {
+        //                 console.error('Error:', error);
+        //                 alert('Failed to submit post. Please try again.');
+        //             }
+        //         });
+        //     });
+        // });
+
+        // function post() {
+        //             window.location.href = "/post"
+        //         }
+        //         function topicone (){
+        //         window.location.href="/comment"
+        //     }
+
+
+
+
+
+
+
+
+        // $(document).ready(() => {
+        //     const userinfo = JSON.parse(sessionStorage.getItem('userinfo'));
+        //     console.log(userinfo)
+        //     if (userinfo && userinfo.image) {
+        //         $('#user-profile').html(`
+        //             <img class="img-profile" crossorigin="anonymous" src="${userinfo.image}" alt="User Profile" referrerpolicy="no-referrer" />
+        //         `);
+        //     } else {
+        //         console.log("No user image available");
+        //         $('#user-profile').html(`<p>No profile image available.</p>`);
+        //     }
+        // });
+        // function logout() {
+        //     fetch('/logout', {
+        //         method: 'POST',
+        //         headers: {
+        //             'Content-Type': 'application/json'
+        //         }
+        //     })
+        //         .then(response => response.json()) // แปลง response เป็น JSON
+        //         .then(data => {
+        //             if (data.redirect) {
+        //                 window.location.href = data.redirect; // ใช้ URL ที่ได้รับจาก server
+        //             } else {
+        //                 console.error('Logout failed');
+        //             }
+        //         })
+        //         .catch(error => console.error('Error:', error));
+        // }
+
+
+
+        // function post() {
+        //     window.location.href = "/post"
+        // }
+        //     function topicone (){
+        //     window.location.href="/comment"
+        // }
+
+
+
+    </script>
+
+
+</body>
+
+</html>
