@@ -24,6 +24,7 @@
         width: 35px;
         margin-top: 4rem;
     }
+
 </style>
 
 <body>
@@ -64,53 +65,60 @@
                 </div>
             </div>
 
+            
             <div class="container">
                 <h1 class="mt-5" style="color: #A60303;">Community</h1>
 
                 <div class="card mt-5">
-                    <% if (post && post.postdetail) { %>
+                    <% if (post && post.postid) { %>
                         <p style="color: #A60303; font-size: 25px; margin-left: 20px; margin-top: 10px;">
                             <%= post.postdetail %>
                         </p>
-                    <% } else { %>
-                        <p>No post details available.</p>
-                    <% } %> 
-                    
-                    
-                    <hr>
-                    <div class="detail text-end">
-                        <span>
-                            <%= (comments && Array.isArray(comments)) ? comments.length : 0 %>
-                        </span>
-                        <i class="bi bi-chat comment"></i>
-                    </div>
-                                      
-                                        
-                    <hr>
-                    <h5 class="comment">Comments</h5>
-                    <% if (comments && comments.length> 0) { %>
-                        <% comments.forEach(function(comment, index) { %>
-                            <div>
+                        <% } else { %>
+                            <p>No post details available.</p>
+                            <% } %>
+
+
+
+
+                                <hr>
+                                <div class="detail text-end">
+                                    <span>
+                                        <%= (comments && Array.isArray(comments)) ? comments.length : 0 %>
+                                    </span>
+                                    <i class="bi bi-chat comment"></i>
+                                </div>
+
+
+                                <hr>
+                <h5 class="comment" style="color: #A60303;">Comments</h5>
+                <div class="comment-container">
+                    <% if (comments && comments.length > 0) { %>
+                        <% comments.forEach(function(comment) { %>
+                            <div class="mb-3">
                                 <p class="comt">
-                                    <strong>
-                                        <%= index + 1 %>. <%= comment.commentUser %>:
-                                    </strong>
-                                    <%= comment.commentText %>
+                                    <strong><%= comment.name %>:</strong> <%= comment.detail %>
                                 </p>
                             </div>
-                            <% }); %>
-                                <% } else { %>
-                                    <p style="margin-left: 10px;">No comments available.</p>
-                                    <% } %>
-                                        <form id="commentForm" action="/submit-comment/<%= postId %>" method="POST">
-                                            <textarea class="form-control" name="commentText"
-                                                placeholder="Write a comment..." required></textarea>
-                                            <button type="submit" class="btn btn-primary mt-3">Submit Comment</button>
-                                        </form>
+                        <% }); %>
+                    <% } else { %>
+                        <p>No comments available.</p>
+                    <% } %>
+                </div>
+
+                <hr>
+                <div class="Write" style="background-color: #f1f1f1; padding: 20px; display: flex; align-items: center;">
+                    <form id="commentForm" action="/submit-comment/<%= postId %>" method="POST" style="width: 100%; display: flex; gap: 10px;">
+                        <textarea class="form-control" name="commentText" placeholder="Write a comment..." required style="flex-grow: 1; border-radius: 8px;"></textarea>
+                        <button type="submit" class="btn btn-primary mt-1" style="border-radius: 8px;">Submit Comment</button>
+                    </form>
+                </div>
+
+
                 </div>
 
             </div>
-        
+
 
 
         </div>
@@ -119,35 +127,54 @@
         <script src="../assets/css/load-html.js"></script>
         <script>
             $(document).ready(() => {
+            $('#commentForm').on('submit', function(event) {
+                event.preventDefault(); // ป้องกันไม่ให้ฟอร์มรีเฟรชหน้าเว็บ
+
+                const commentText = $('textarea[name="commentText"]').val();
+                const postId = <%= JSON.stringify(post.postid) %>; // ใช้ EJS เพื่อแทรก post id
+
+                $.ajax({
+                    type: 'POST',
+                    url: `/submit-comment/${postId}`,
+                    contentType: 'application/json',
+                    data: JSON.stringify({ commentText: commentText }),
+                    success: function(response) {
+                        if (response.comment) {
+                            const newComment = response.comment;
+
+                            const newCommentHtml = `
+                                <div>
+                                    <p class="comt">
+                                        <strong>${newComment.name}:</strong> ${newComment.detail}
+                                    </p>
+                                </div>
+                            `;
+
+                            $('.comment-container').append(newCommentHtml);
+                            $('textarea[name="commentText"]').val('');
+                            alert('Comment successfully submitted!');
+                        }
+                    },
+                    error: function(error) {
+                        console.error('Error:', error);
+                        alert('Could not add comment. Please try again.');
+                    }
+                });
+            });
+        
+                
+
                 const userinfo = JSON.parse(sessionStorage.getItem('userinfo'));
                 console.log(userinfo)
                 if (userinfo && userinfo.image) {
                     $('#user-profile').html(`
-                    <img class="img-profile" crossorigin="anonymous" src="${userinfo.image}" alt="User Profile" referrerpolicy="no-referrer" />
-                `);
+                        <img class="img-profile" crossorigin="anonymous" src="${userinfo.image}" alt="User Profile" referrerpolicy="no-referrer" />
+                    `);
                 } else {
                     console.log("No user image available");
                     $('#user-profile').html(`<p>No profile image available.</p>`);
                 }
-
-                
             });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
             function logout() {
                 fetch('/logout', {
@@ -166,13 +193,8 @@
                     })
                     .catch(error => console.error('Error:', error));
             }
-
-
-
-            
-
-
         </script>
+
 
     </body>
 

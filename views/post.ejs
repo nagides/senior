@@ -131,54 +131,37 @@
                         } else {
                             console.log('No userinfo found in sessionStorage');
                         }
+
+                        console.log(userinfo)
+                        if (userinfo && userinfo.image) {
+                            $('#user-profile').html(`
+                        <img class="img-profile" crossorigin="anonymous" src="${userinfo.image}" alt="User Profile" referrerpolicy="no-referrer" />
+                    `);
+                        } else {
+                            console.log("No user image available");
+                            $('#user-profile').html(`<p>No profile image available.</p>`);
+                        }
                     });
 
 
 
-
-                    // $(document).ready(() => {
-                    //     const userinfo = JSON.parse(sessionStorage.getItem('userinfo')); // ดึงข้อมูลผู้ใช้จาก sessionStorage
-
-                    //     if (userinfo) {
-                    //         $('#postForm').on('submit', function (event) {
-                    //             event.preventDefault(); // ป้องกันการส่งฟอร์มแบบปกติ
-
-                    //             const postContent = $('#postContentInput').val(); // รับข้อมูลจากฟอร์ม
-
-                    //             if (!postContent) {
-                    //                 alert('Please fill in the post content.');
-                    //                 return;
-                    //             }
-
-                    //             console.log('Post content:', postContent);
-                    //             console.log('User email:', userinfo.email);
-
-                    //             // ส่งข้อมูลไปยังเซิร์ฟเวอร์
-                    //             $.ajax({
-                    //                 type: 'POST',
-                    //                 url: '/submit-post', // URL ของเซิร์ฟเวอร์
-                    //                 data: {
-                    //                     postContent: postContent,
-                    //                     email: userinfo.email
-                    //                 },
-                    //                 success: function (response) {
-                    //                     console.log('Post saved successfully:', response);
-                    //                     alert('Post submitted successfully!');
-                    //                     window.location.href = '/community'; // เปลี่ยนไปยังหน้าชุมชน
-                    //                 },
-                    //                 error: function (error) {
-                    //                     console.error('Error:', error);
-                    //                     alert('Failed to submit post. Please try again.');
-                    //                 }
-                    //             });
-                    //         });
-                    //     } else {
-                    //         console.log('No userinfo found in sessionStorage');
-                    //     }
-                    // });
-
-
-
+                    function logout() {
+                        fetch('/logout', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        })
+                            .then(response => response.json()) // แปลง response เป็น JSON
+                            .then(data => {
+                                if (data.redirect) {
+                                    window.location.href = data.redirect; // ใช้ URL ที่ได้รับจาก server
+                                } else {
+                                    console.error('Logout failed');
+                                }
+                            })
+                            .catch(error => console.error('Error:', error));
+                    }
 
                 </script>
 </body>

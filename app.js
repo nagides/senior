@@ -87,7 +87,8 @@ app.use(session({
   secret: 'SECRET',
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 60000 * 60 } // Session expires in 1 hour
+  cookie: { maxAge: 24 * 60 * 60 * 1000 } // กำหนดให้ session หมดอายุหลัง 24 ชั่วโมง
+  // cookie: { maxAge: 60000 * 60 } // Session expires in 1 hour
 }));
 
 // initialize passport
@@ -381,8 +382,10 @@ app.post('/auth/google', (req, res) => {
         const role = isAdmin ? 'admin' : 'student'; // Set role to admin if email contains 'ORAPHAN'
 
         // Default first name and last name if not available
-        const firstName = userinfo.firstName || 'DefaultFirstName';
-        const lastName = userinfo.lastName || 'DefaultLastName';
+        const fullname = userinfo.fullname || 'Default FullName';
+        const [firstName, lastName] = fullname.split(' ').length > 1
+          ? fullname.split(' ')
+          : [fullname, '']; // กรณีที่ fullname ไม่มีนามสกุล
 
         con.query(sqlInsert, [userinfo.email, randomFaculty, randomMajor, role, firstName, lastName, displayName], (err, result) => {
           if (err) {
@@ -391,14 +394,30 @@ app.post('/auth/google', (req, res) => {
           }
 
           // Set session user for new student or admin
+          // req.session.user = {
+          //   id: result.insertId, // Assuming insertId is the studentid from the insert query
+          //   email: userinfo.email,
+          //   firstName: firstName,
+          //   lastName: lastName,
+          //   displayName: displayName,
+          //   role: role,
+          // };
           req.session.user = {
-            id: result.insertId, // Assuming insertId is the studentid from the insert query
+            id: student.studentid,
             email: userinfo.email,
-            firstName: firstName,
-            lastName: lastName,
-            displayName: displayName,
-            role: role,
+            firstName: userinfo.firstName || (userinfo.fullname ? userinfo.fullname.split(' ')[0] : 'Guest'),
+            lastName: userinfo.lastName || (userinfo.fullname ? userinfo.fullname.split(' ')[1] || '' : ''),
+            displayName: userinfo.displayName || userinfo.fullname || `${userinfo.firstName || 'Guest'} ${userinfo.lastName || ''}`.trim(),
+            role: student.role,
+            studentid: student.studentid,
           };
+
+
+
+
+
+
+
 
           console.log('New user inserted:', result.insertId);
           console.log('User displayName:', req.session.user.displayName);
@@ -439,6 +458,9 @@ app.post('/auth/google', (req, res) => {
         console.log('User displayName:', req.session.user.displayName);
         console.log('User role:', req.session.user.role); // Debugging statement
         console.log('User studentid:', req.session.user.studentid);
+        console.log('Session after update:', req.session.user);
+
+
 
         if (isAdmin) {
           // Redirect to admin dashboard if the user is an admin
@@ -457,6 +479,7 @@ app.post('/auth/google', (req, res) => {
     res.status(500).json({ error: 'Authentication failed' });
   }
 });
+
 
 
 
@@ -762,9 +785,12 @@ app.get('/review/:course_id', isAuthenticated, (req, res) => {
 
 
 // นากิทำยังไม่รู้ว่าถูกไหม*********************************************
-app.get('/post', (req, res) => {
+app.get('/post', async (req, res) => {
   res.render('post');  // Ensure 'post.ejs' exists in your views folder
 });
+
+
+
 
 // app.post('/post', (req, res) => {
 //   const { postContent, email } = req.body;
@@ -877,27 +903,26 @@ app.get('/community', (req, res) => {
   res.render('community', { posts: posts, comments: comments }); // ส่ง posts และ comments ไปยัง community.ejs
 });
 
+
 // เส้นทางสำหรับการแสดงหน้า comment
-app.get('/comment/:postId', (req, res) => {
-  const postId = req.params.postId;
-  const post = posts[postId];
-  const postComments = comments[postId];
-  res.render('comment', { post: post, comments: postComments, postId: postId });
-});
+// app.get('/comment/:postId', (req, res) => {
+//   const postId = req.params.postId;
+//   const post = posts[postId];
+//   const postComments = comments[postId];
+//   res.render('comment', { post: post, comments: postComments, postId: postId });
+// });
 
 // เส้นทางสำหรับการส่งคอมเม้นต์
-app.post('/submit-comment/:postId', (req, res) => {
-  const postId = req.params.postId;
-  const commentContent = req.body.commentText; // ดึงค่าคอมเมนต์จากฟอร์ม
-  const commentUser = req.body.commentUser; // ดึงชื่อผู้คอมเมนต์จากฟอร์ม
+// app.post('/submit-comment/:postId', (req, res) => {
+//   const postId = req.params.postId;
+//   const commentContent = req.body.commentText; // ดึงค่าคอมเมนต์จากฟอร์ม
+//   const commentUser = req.body.commentUser; // ดึงชื่อผู้คอมเมนต์จากฟอร์ม
 
-  // เพิ่มคอมเม้นต์ในรูปแบบของออบเจกต์ที่เก็บชื่อผู้คอมเมนต์และเนื้อหาคอมเมนต์
-  comments[postId].push({ commentText: commentContent, commentUser: commentUser });
+//   // เพิ่มคอมเม้นต์ในรูปแบบของออบเจกต์ที่เก็บชื่อผู้คอมเมนต์และเนื้อหาคอมเมนต์
+//   comments[postId].push({ commentText: commentContent, commentUser: commentUser });
 
-  res.redirect(`/comment/${postId}`); // Redirect กลับไปที่หน้า comment
-});
-
-
+//   res.redirect(`/comment/${postId}`); // Redirect กลับไปที่หน้า comment
+// });
 
 
 
@@ -905,37 +930,39 @@ app.post('/submit-comment/:postId', (req, res) => {
 
 
 
-app.post('/submit-comment/:postId', (req, res) => {
-  const postId = req.params.postId;  // รับ postId จาก URL
-  const commentText = req.body.commentText;  // รับเนื้อหาคอมเมนต์จากฟอร์ม
 
-  // เช็คคอมเมนต์ว่ามีเนื้อหาหรือไม่
-  if (!commentText) {
-    return res.status(400).send('Comment text is required');
-  }
 
-  // บันทึกคอมเมนต์ลงในฐานข้อมูล (ปรับตามที่คุณใช้งาน)
-  saveComment(postId, commentText) // ฟังก์ชันนี้เป็นฟังก์ชันของคุณในการบันทึกคอมเมนต์
+// app.post('/submit-comment/:postId', (req, res) => {
+//   const postId = req.params.postId;  // รับ postId จาก URL
+//   const commentText = req.body.commentText;  // รับเนื้อหาคอมเมนต์จากฟอร์ม
 
-  // เปลี่ยนเส้นทางกลับไปยังโพสต์หรือส่งข้อความตอบกลับ
-  res.redirect(`/your-post-route/${postId}`);
-});
+//   // เช็คคอมเมนต์ว่ามีเนื้อหาหรือไม่
+//   if (!commentText) {
+//     return res.status(400).send('Comment text is required');
+//   }
 
-app.post('/submit-comment/:postId', (req, res) => {
-  console.log(req.body);  // แสดงข้อมูลที่ส่งมาในคอนโซล
-});
-app.get('/your-post-route/:postId', (req, res) => {
-  const postId = req.params.postId;
+//   // บันทึกคอมเมนต์ลงในฐานข้อมูล (ปรับตามที่คุณใช้งาน)
+//   saveComment(postId, commentText) // ฟังก์ชันนี้เป็นฟังก์ชันของคุณในการบันทึกคอมเมนต์
 
-  // ค้นหาโพสต์และคอมเมนต์จากฐานข้อมูล
-  const post = getPostById(postId); // ฟังก์ชันของคุณในการดึงโพสต์
-  const comments = getCommentsForPost(postId); // ฟังก์ชันของคุณในการดึงคอมเมนต์
+//   // เปลี่ยนเส้นทางกลับไปยังโพสต์หรือส่งข้อความตอบกลับ
+//   res.redirect(`/your-post-route/${postId}`);
+// });
 
-  // ตรวจสอบให้แน่ใจว่า comments มีข้อมูล
-  console.log(comments);  // แสดงคอมเมนต์ในคอนโซล
+// app.post('/submit-comment/:postId', (req, res) => {
+//   console.log(req.body);  // แสดงข้อมูลที่ส่งมาในคอนโซล
+// });
+// app.get('/your-post-route/:postId', (req, res) => {
+//   const postId = req.params.postId;
 
-  res.render('comment', { post: post.content, comments: comments, postId: postId });
-});
+//   // ค้นหาโพสต์และคอมเมนต์จากฐานข้อมูล
+//   const post = getPostById(postId); // ฟังก์ชันของคุณในการดึงโพสต์
+//   const comments = getCommentsForPost(postId); // ฟังก์ชันของคุณในการดึงคอมเมนต์
+
+//   // ตรวจสอบให้แน่ใจว่า comments มีข้อมูล
+//   console.log(comments);  // แสดงคอมเมนต์ในคอนโซล
+
+//   res.render('comment', { post: post.content, comments: comments, postId: postId });
+// });
 
 
 
@@ -1622,120 +1649,38 @@ app.get('/logout', (req, res) => {
 
 
 
-// app.post('/post', (req, res) => {
-//   const { postContent, studentId } = req.body;
 
-//   if (!postContent || !studentId) {
-//       return res.status(400).send('Post content or student ID is missing.');
-//   }
+app.get('/community', (req, res) => {
+  const sqlQuery = `
+    SELECT postt.postid, postt.postdetail, postt.posttime, COUNT(comment.commentid) AS commentCount
+    FROM postt
+    LEFT JOIN comment ON postt.postid = comment.postid
+    GROUP BY postt.postid;
+  `;
 
-//   const sql = 'INSERT INTO postt (postdetail, student_id) VALUES (?, ?)';
-//   connection.query(sql, [postContent, studentId], (err) => {
-//       if (err) {
-//           console.error('Error inserting post:', err);
-//           return res.status(500).send('Failed to save post.');
-//       }
-//       res.redirect('/community'); // กลับไปยังหน้า community
-//   });
-// });
+  con.query(sqlQuery, (err, results) => {
+    if (err) {
+      console.error('Error fetching posts:', err);
+      return res.status(500).send('Error fetching posts');
+    }
 
-
-
-// app.post('/post', (req, res) => {
-//  const { postContent, studentId } = req.body;
-
-
-//   console.log('Received Data:', { postContent, studentId }); // ตรวจสอบว่าข้อมูลมาถูกต้องไหม
-
-//   if (!postContent || !studentId) {
-//       console.error('Missing post content or student ID');
-//       return res.status(400).send('Post content or student ID is missing.');
-//   }
-
-//   const sql = 'INSERT INTO postt (postdetail, student_id) VALUES (?, ?)';
-//   connection.query(sql, [postContent, studentId], (err) => {
-//       if (err) {
-//           console.error('Error inserting post:', err);
-//           return res.status(500).send('Failed to save post.');
-//       }
-//       console.log('Post inserted successfully');
-//       res.redirect('/community');
-
-//       connection.connect((err) => {
-//         if (err) {
-//             console.error('Error connecting to the database:', err);
-//         } else {
-//             console.log('Connected to the database');
-//         }
-//     });
-
-//   });
-// });
-
-
-// app.post('/post', (req, res) => {
-//   const studentId = req.session.studentId || 'defaultStudentId'; // ดึงจาก session
-//   res.render('post', { studentId }); // ส่งค่าไปยัง View
-
-//   const { postContent} = req.body;
-
-
-
-//    console.log('Received Data:', { postContent, studentId }); // ตรวจสอบว่าข้อมูลมาถูกต้องไหม
-
-//    if (!postContent || !studentId) {
-//        console.error('Missing post content or student ID');
-//        return res.status(400).send('Post content or student ID is missing.');
-//    }
-
-//    const sql = 'INSERT INTO postt (postdetail, student_id) VALUES (?, ?)';
-//    connection.query(sql, [postContent, studentId], (err) => {
-//        if (err) {
-//            console.error('Error inserting post:', err);
-//            return res.status(500).send('Failed to save post.');
-//        }
-//        console.log('Post inserted successfully');
-//        res.redirect('/community');
-
-//        connection.connect((err) => {
-//          if (err) {
-//              console.error('Error connecting to the database:', err);
-//          } else {
-//              console.log('Connected to the database');
-//          }
-//      });
-
-//    });
-// });
+    console.log(results); // ตรวจสอบค่าผลลัพธ์จากฐานข้อมูล
+    res.render('community', { posts: results }); // ส่งผลลัพธ์ไปยังหน้า EJS
+  });
+});
 
 
 
 
 
-// app.get('/community', (req, res) => {
-//   const sql = 'SELECT postdetail FROM postt ORDER BY time DESC';
-//   connection.query(sql, (err, results) => {
-//       if (err) {
-//           console.error('Error fetching posts:', err);
-//           return res.status(500).send('Error');
-//       }
-//       res.render('community', { posts: results.map(row => row.postdetail) });
-//   });
-// });
 
-// app.get('/community', (req, res) => {
-//   const sql = 'SELECT postdetail, time FROM postt ORDER BY time DESC';
-//   con.query(sql, (err, results) => {
-//     if (err) {
-//       console.error('Error fetching posts:', err);
-//       return res.status(500).send('Error');
-//     }
-//     res.render('community', { posts: results });
-//   });
-// });
+
+
+
 
 
 app.post('/post', (req, res) => {
+
   const { postContent, email } = req.body;
 
   // ตรวจสอบข้อมูล
@@ -1748,7 +1693,7 @@ app.post('/post', (req, res) => {
       console.error('Error inserting data:', err.sqlMessage || err.message);
       return res.status(500).send('Database error: ' + (err.sqlMessage || err.message));
     }
-    
+
     // หลังจากบันทึกโพสต์สำเร็จแล้ว ดึงโพสต์ใหม่
     const newPost = {
       postid: result.insertId,
@@ -1759,166 +1704,197 @@ app.post('/post', (req, res) => {
     };
     posts.unshift(newPost); // เพิ่มโพสต์ใหม่ที่อยู่ด้านหน้า array
     res.send({ message: 'Post added successfully', postId: result.insertId });
-     console.log('Post SQL:', sql, 'with values:', [postContent, email, result.insertId ]);
+    console.log('Post SQL:', sql, 'with values:', [postContent, email, result.insertId]);
   });
-  // console.log('Executing SQL:', sql, 'with values:', [postid, postdetail]);
+
 });
 
-// app.get('/get-posts', (req, res) => {
-//   const sql = 'SELECT * FROM postt ORDER BY time DESC';
-//   con.query(sql, (err, results) => {
-//     if (err) {
-//       console.error('Database Error:', err);
-//       return res.status(500).send('Database error: ' + err.message);
-//     }
-//     res.json(results); // ส่งข้อมูลโพสต์ไปยัง Frontend
-//   });
-  
-// });
 
 
-// app.get('/post/:id', (req, res) => {
-//   const { id } = req.params;
 
-//   const sqlPost = 'SELECT * FROM postt WHERE postid = ?';
-//   const sqlComments = 'SELECT * FROM comment WHERE postid = ? ORDER BY time DESC';
 
-//   con.query(sqlPost, [id], (err, postResult) => {
-//     if (err) {
-//       console.error('Error fetching post:', err);
-//       return res.status(500).send('Error fetching post');
-//     }
-//     if (postResult.length === 0) {
-//       return res.status(404).send('Post not found');
-//     }
 
-//     con.query(sqlComments, [id], (err, commentResults) => {
-//       if (err) {
-//         console.error('Error fetching comments:', err);
-//         return res.status(500).send('Error fetching comments');
-//       }
 
-//       res.render('post-detail', {
-//         post: postResult[0],
-//         comments: commentResults
-//       });
-//     });
-//   });
-// });
 
 
 
 app.get('/comment/:postid', (req, res) => {
-  
-  const postId = req.params.postid; // ตรวจสอบการตั้งชื่อให้ถูกต้อง (postid ไม่ใช่ postId)
-  console.log(postId);  // พิมพ์ postId เพื่อดูว่ามีค่าหรือไม่
-  // ดึงข้อมูลโพสต์จากฐานข้อมูล
-  con.query('SELECT * FROM postt WHERE postid = ?', [postId], (err, results) => {
+  const postId = req.params.postid;
+  console.log('Received postId:', postId);
+
+  // Query ดึงข้อมูลโพสต์
+  con.query('SELECT * FROM postt WHERE postid = ?', [postId], (err, postResults) => {
     if (err) {
-      console.error('Error:', err); // ถ้ามีข้อผิดพลาดใน query จะเห็นที่นี่
+      console.error('Error in Query:', err);
       return res.status(500).send('Error fetching post');
     }
-    console.log(results); // พิมพ์ผลลัพธ์ของ query
-    if (results.length === 0) {
+
+    if (postResults.length === 0) {
       return res.status(404).send('Post not found');
     }
-    // ดึงคอมเมนต์ที่เกี่ยวข้อง
-    con.query('SELECT * FROM comment WHERE postid = ?', [postId], (err, comments) => {
-      if (err) {
-        console.error('Error fetching comments:', err);
-        return res.status(500).send('Error fetching comments');
+
+    const post = postResults[0];
+
+    // Query ดึงข้อมูลคอมเมนต์
+    con.query(
+      `SELECT comment.commentdetail, comment.commenttime, student.first_name, student.last_name 
+       FROM comment  
+       JOIN student  ON comment.email = student.email 
+       WHERE comment.postid = ?`,
+      [postId],
+      (err, commentResults) => {
+        if (err) {
+          console.error('Error fetching comments:', err);
+          return res.status(500).send('Error fetching comments');
+        }
+
+        const comments = commentResults.map(comment => ({
+          detail: comment.commentdetail,
+          time: comment.commenttime,
+          name: `${comment.first_name} ${comment.last_name}`
+        }));
+
+        res.render('comment', { post, postId, comments });
       }
+    );
 
-      // ตรวจสอบและกำหนดให้ comments เป็น array ถ้าเป็น undefined หรือ null
-      if (!Array.isArray(comments)) {
-        comments = [];
-      }
-
-      // ส่งข้อมูลไปยังหน้าคอมเมนต์
-      res.render('comment', { post: results[0], comments });
-    });
-  });
-  
-});
-
-
-    // ดึงคอมเมนต์ที่เกี่ยวข้อง
-    // con.query('SELECT * FROM comment WHERE postid = ?', [postId], (err, comments) => {
+    // con.query('SELECT * FROM comment WHERE postid = ?', [postId], (err, commentResults) => {
     //   if (err) {
+    //     console.error('Error fetching comments:', err);
     //     return res.status(500).send('Error fetching comments');
     //   }
 
-    //   // ตรวจสอบและกำหนดให้ comments เป็น array ถ้าเป็น undefined หรือ null
-    //   if (!Array.isArray(comments)) {
-    //     comments = [];
-    //   }
+    //   // ตรวจสอบว่า commentResults เป็นอาเรย์หรือไม่
+    //   let comments = Array.isArray(commentResults) ? commentResults : [];
 
-    //   // ส่งข้อมูลไปยังหน้าคอมเมนต์
-    //   res.render('comment', { post: results[0], comments });
+    //   // ส่งข้อมูลทั้งหมดไปยัง view
+    //   res.render('comment', { post, postId, comments });
     // });
-
-  
-//   Post.findById(postId, (err, post) => {
-//     if (err) {
-//         console.error(err);
-//         return res.status(500).send('Server error');
-//     }
-
-//     // ตรวจสอบว่า post มีข้อมูลหรือไม่
-//     console.log(post);  // พิมพ์ข้อมูลของ post เพื่อตรวจสอบ
-//     if (!post) {
-//         return res.status(404).send('Post not found');
-//     }
-    
-//     // สมมติว่าเราเรียกข้อมูลคอมเมนต์ด้วย
-//     Comment.find({ postId }, (err, comments) => {
-//         if (err) {
-//             console.error(err);
-//             return res.status(500).send('Server error');
-//         }
-
-//         // ส่งข้อมูล post และ comments ไปยังเทมเพลต
-//         res.render('comment', { post, comments });
-//     });
-// });
+  });
+});
 
 
+// ฟังก์ชันดึงข้อมูลโพสต์จากฐานข้อมูล
+function getPostById(postId) {
+  return new Promise((resolve, reject) => {
+    const query = 'SELECT * FROM postt WHERE postid = ?';
+    con.query(query, [postId], (err, results) => {
+      if (err) {
+        reject('Error fetching post');
+      } else {
+        resolve(results);
+      }
+    });
+  });
+}
 
 
+// ฟังก์ชันบันทึกคอมเมนต์
+function saveComment(postId, commentText) {
+  return new Promise((resolve, reject) => {
+    const query = 'INSERT INTO comment (postid, commentdetail) VALUES (?, ?)';
+    con.query(query, [postId, commentText], (err, result) => {
+      if (err) {
+        console.error('Error saving comment:', err);
+        reject(err);
+      } else {
+        resolve(result);
+      }
+    });
+  });
+}
 
 
-// app.get('/comment/:postId', (req, res) => {
-//   const postId = req.params.postId; // รับค่าพารามิเตอร์จาก URL
-//   res.status(200).send(`Post ID: ${postId}`);
-// });
-// app.use((req, res) => {
-//   res.status(404).send('ไม่พบหน้าที่คุณร้องขอ');
-// });
+app.post('/submit-comment/:postId', (req, res) => {
+  const { commentText } = req.body;
+  const { postId } = req.params;
+  const userEmail = req.session.user.email; // ดึงอีเมลจาก session
 
+  if (!commentText || !userEmail) {
+    return res.status(400).send('Comment text and user email are required.');
+  }
 
-// app.post('/post', (req, res) => {
-//   const { postContent, email } = req.body;
+  // ทำการบันทึกคอมเมนต์ใหม่ลงฐานข้อมูล
+  const insertSql = 'INSERT INTO comment (postid, commentdetail, email) VALUES (?, ?, ?)';
+  con.query(insertSql, [postId, commentText, userEmail], (err, result) => {
+    if (err) {
+      console.error('Error inserting comment:', err);
+      return res.status(500).send('Database error: ' + (err.sqlMessage || err.message));
+    }
 
-//   // ตรวจสอบข้อมูล
-//   if (!postContent || !email) {
-//       return res.status(400).send('postdetail and email are required.');
+    // ดึงคอมเมนต์ใหม่ที่เพิ่งถูกเพิ่ม
+    const selectSql = `SELECT comment.commentdetail, student.first_name, student.last_name 
+                       FROM comment  
+                       JOIN student ON comment.email = student.email 
+                       WHERE comment.commentid = ?`;
+
+    con.query(selectSql, [result.insertId], (err, newCommentResults) => {
+      if (err) {
+        console.error('Error fetching new comment:', err);
+        return res.status(500).send('Error fetching new comment');
+      }
+
+      const newComment = {
+        detail: newCommentResults[0].commentdetail,
+        name: `${newCommentResults[0].first_name} ${newCommentResults[0].last_name}`
+      };
+
+      // ส่งกลับข้อมูลคอมเมนต์ใหม่
+      res.send({ message: 'Comment added successfully', comment: newComment });
+    });
+  });
+});
+
+// app.post('/submit-comment/:postId', (req, res) => {
+//   const { commentText } = req.body;
+//   const { postId } = req.params;
+//   const userEmail = req.session.user.email; // ดึงอีเมลจาก session
+
+//   if (!commentText || !userEmail) {
+//     return res.status(400).send('Comment text and user email are required.');
 //   }
-//   console.log('Request Body:', req.body);
 
-//   // บันทึกข้อมูลลงในตาราง
-//   const sql = 'INSERT INTO postt (postdetail, email) VALUES (?, ?)';
-//   console.log('Executing SQL:', sql, 'with values:', [postContent, email]);
-//   con.query(sql, [postContent, email], (err, result) => {
-//       if (err) {
-//           console.error('Error inserting data:', err.sqlMessage || err.message);
-//           return res.status(500).send('Database error: ' + (err.sqlMessage || err.message));
-//       }
-//       console.log('Database Response:', result);
-//       res.send({ message: 'Post added successfully', postId: result.insertId });
+//   const sql = `
+//     SELECT comment.commentdetail, student.first_name, student.last_name 
+//     FROM comment  
+//     JOIN student  ON comment.email = student.email 
+//     WHERE comment.commentid = ?
+// `;
+
+//   con.query(sql, [result.insertId], (err, newCommentResults) => {
+//     if (err) {
+//       console.error('Error fetching new comment:', err);
+//       return res.status(500).send('Error fetching new comment');
+//     }
+
+//     const newComment = {
+//       detail: newCommentResults[0].commentdetail,
+//       name: `${newCommentResults[0].first_name} ${newCommentResults[0].last_name}`
+//     };
+
+//     res.send({ message: 'Comment added successfully', comment: newComment });
 //   });
+
+//   // const sql = 'INSERT INTO comment (commentdetail, email, postid) VALUES (?, ?, ?)';
+//   // con.query(sql, [commentText, userEmail, postId], (err, result) => {
+//   //   if (err) {
+//   //     console.error('Error inserting comment:', err.sqlMessage || err.message);
+//   //     return res.status(500).send('Database error: ' + (err.sqlMessage || err.message));
+//   //   }
+
+//   //   // ดึงคอมเมนต์ที่เพิ่มใหม่
+//   //   const newComment = {
+//   //     commentid: result.insertId,
+//   //     commentdetail: commentText,
+//   //     email: userEmail,
+//   //     postid: postId,
+//   //     commenttime: new Date()
+//   //   };
+
+//   //   // ส่งกลับคอมเมนต์ใหม่
+//   //   res.send({ message: 'Comment added successfully', comment: newComment });
+//   // });
 // });
-
-
 
 
 
